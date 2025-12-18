@@ -1,0 +1,780 @@
+vollende diesen code ohne ihn komplett erneut zu schreiben fahre einfach dort fort wo dieser aufhört:
+ich möchte diese anwendung: jetzt möchte ich mehr design und das ganze in eine eigenständige app mit desktop verknüpfung überführen Hier kurz beschreibung der anwendung. Hier ist eine vollständige, minimalistische Desktop-Anwendung für Zeiterfassung. Die App erfüllt alle Ihre Anforderungen: Installation und Start 1. Python 3.7+ installieren 2. Optional für Tray-Icon: pip install pystray pillow 3. Datei speichern als timetracker.py 4. Starten: python timetracker.py Funktionen ✅ Grundfunktionen * Timer: Start/Stop mit Live-Anzeige * Lokale SQLite-Datenbank (automatisch erstellt) * Tray-Icon (wenn pystray installiert) * Formular nach Timer-Stop für Eingabe von: * Meilenstein (wählbar/neu) * Beschreibung (Freitext) * Bearbeiter (wählbar/neu) ✅ Datenverwaltung * Bearbeiten bestehender Einträge * Löschen von Einträgen * Automatische Listen-Updates ✅ Datenmodell * Benutzer-Tabelle: ID, Name * Meilensteine-Tabelle: ID, Name * Zeiteinträge-Tabelle: ID, Start, Ende, Dauer, Meilenstein-ID, Beschreibung, Bearbeiter-ID ✅ Export * CSV-Export: Alle Felder, kombinierbar * JSON-Export: Strukturierte Daten Minimalistisches Design Die App ist bewusst funktional und schlicht gehalten: * Keine aufwändigen Styles * Klare Button-Beschriftungen * Einfache Tabellen-Ansicht * Standard tkinter-Widgets Besonderheiten * Offline-fähig: Keine Internetverbindung nötig * Automatische DB-Erstellung bei erstem Start * Thread-sicherer Timer * Tray-Minimierung (optional) * Fehlerbehandlung bei allen DB-Operationen Die Anwendung erstellt automatisch eine timetracker.db Datei im gleichen Verzeichnis. Alle Daten werden lokal gespeichert und sind vollständig portabel. Wiederholen
+
+Bearbeite
+
+#!/usr/bin/env python3
+"""
+TimeTracker Pro - Moderne Zeiterfassung Desktop-Anwendung
+Version 2.0 - Professionelles Design mit Installer und Desktop-Verknüpfung
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import sqlite3
+import json
+import csv
+import datetime
+import threading
+import time
+import os
+import sys
+import subprocess
+import platform
+import shutil
+
+# Für Tray-Icon und erweiterte Features
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+    TRAY_AVAILABLE = True
+except ImportError:
+    TRAY_AVAILABLE = False
+    print("Hinweis: Für Tray-Icon 'pip install pystray pillow' ausführen")
+
+
+class ModernTheme:
+    """Moderne Farbpalette und Styles"""
+    
+    # Hauptfarben
+    PRIMARY = "#2563eb"      # Blau
+    PRIMARY_DARK = "#1d4ed8"
+    PRIMARY_LIGHT = "#3b82f6"
+    SECONDARY = "#64748b"    # Grau
+    SUCCESS = "#10b981"      # Grün
+    WARNING = "#f59e0b"      # Orange
+    DANGER = "#ef4444"       # Rot
+    INFO = "#06b6d4"         # Cyan
+    
+    # Hintergrundfarben
+    BG_PRIMARY = "#ffffff"   # Weiß
+    BG_SECONDARY = "#f8fafc" # Hellgrau
+    BG_DARK = "#0f172a"      # Dunkelblau
+    BG_CARD = "#f1f5f9"      # Kartenfarbe
+    
+    # Textfarben
+    TEXT_PRIMARY = "#1e293b"
+    TEXT_SECONDARY = "#64748b"
+    TEXT_LIGHT = "#94a3b8"
+    TEXT_WHITE = "#ffffff"
+    
+    # Rahmen und Schatten
+    BORDER = "#e2e8f0"
+    SHADOW = "#00000010"
+    ACCENT = "#f0f9ff"
+
+
+class AppInstaller:
+    """Installer für Desktop-Verknüpfung und App-Konfiguration"""
+    
+    @staticmethod
+    def get_app_directory():
+        """Gibt das App-Verzeichnis zurück"""
+        if getattr(sys, 'frozen', False):
+            # Wenn als exe gestartet
+            return os.path.dirname(sys.executable)
+        else:
+            # Wenn als Python-Script gestartet
+            return os.path.dirname(os.path.abspath(__file__))
+    
+    @staticmethod
+    def create_desktop_shortcut():
+        """Erstellt Desktop-Verknüpfung"""
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        app_dir = AppInstaller.get_app_directory()
+        
+        if platform.system() == "Windows":
+            shortcut_path = os.path.join(desktop, "TimeTracker Pro.lnk")
+            target = sys.executable if getattr(sys, 'frozen', False) else f'"{sys.executable}" "{__file__}"'
+            
+            # Windows Shortcut erstellen
+            try:
+                import winshell
+                winshell.CreateShortcut(
+                    Path=shortcut_path,
+                    Target=target,
+                    Icon=(sys.executable if getattr(sys, 'frozen', False) else None, 0),
+                    Description="TimeTracker Pro - Professionelle Zeiterfassung"
+                )
+                return True
+            except ImportError:
+                # Alternative ohne winshell
+                with open(shortcut_path.replace('.lnk', '.bat'), 'w') as f:
+                    f.write(f'@echo off\ncd /d "{app_dir}"\n{target}\npause')
+                return True
+                
+        elif platform.system() == "Darwin":  # macOS
+            shortcut_path = os.path.join(desktop, "TimeTracker Pro.command")
+            with open(shortcut_path, 'w') as f:
+                f.write(f'#!/bin/bash\ncd "{app_dir}"\n{sys.executable} "{__file__}"\n')
+            os.chmod(shortcut_path, 0o755)
+            return True
+            
+        else:  # Linux
+            shortcut_path = os.path.join(desktop, "TimeTracker Pro.desktop")
+            with open(shortcut_path, 'w') as f:
+                f.write(f"""[Desktop Entry]
+Version=1.0
+Type=Application
+Name=TimeTracker Pro
+Comment=Professionelle Zeiterfassung
+Exec={sys.executable} "{__file__}"
+Icon=utilities-system-monitor
+Terminal=false
+Categories=Office;
+""")
+            os.chmod(shortcut_path, 0o755)
+            return True
+        
+        return False
+    
+    @staticmethod
+    def install_app():
+        """Installiert die App (optional)"""
+        app_dir = AppInstaller.get_app_directory()
+        
+        # Prüfen ob bereits installiert
+        config_file = os.path.join(app_dir, "timetracker_config.json")
+        if os.path.exists(config_file):
+            return True
+        
+        # Konfigurationsdatei erstellen
+        config = {
+            "version": "2.0",
+            "installed": True,
+            "install_date": datetime.datetime.now().isoformat(),
+            "database_path": os.path.join(app_dir, "timetracker_pro.db")
+        }
+        
+        try:
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Installation fehlgeschlagen: {e}")
+            return False
+
+
+class TimeTrackerDB:
+    """Erweiterte Datenbankschicht für SQLite"""
+    
+    def __init__(self, db_path=None):
+        if db_path is None:
+            app_dir = AppInstaller.get_app_directory()
+            self.db_path = os.path.join(app_dir, "timetracker_pro.db")
+        else:
+            self.db_path = db_path
+        self.init_database()
+    
+    def init_database(self):
+        """Erstellt die Datenbank-Tabellen mit erweiterten Feldern"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Settings-Tabelle für App-Einstellungen
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Benutzer-Tabelle erweitert
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                email TEXT,
+                role TEXT DEFAULT 'user',
+                active BOOLEAN DEFAULT 1,
+                avatar_color TEXT DEFAULT '#2563eb',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Projekte-Tabelle (ersetzt Meilensteine)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                description TEXT,
+                color TEXT DEFAULT '#2563eb',
+                client TEXT,
+                active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Zeiteinträge-Tabelle erweitert
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS time_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                start_time TIMESTAMP NOT NULL,
+                end_time TIMESTAMP NOT NULL,
+                duration INTEGER NOT NULL,
+                project_id INTEGER,
+                description TEXT,
+                user_id INTEGER,
+                tags TEXT,
+                hourly_rate REAL DEFAULT 0,
+                billable BOOLEAN DEFAULT 0,
+                status TEXT DEFAULT 'completed',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (project_id) REFERENCES projects (id),
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Kategorien für bessere Organisation
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                color TEXT DEFAULT '#64748b',
+                icon TEXT DEFAULT '📋',
+                active BOOLEAN DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Projekt-Kategorien Verknüpfung
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS project_categories (
+                project_id INTEGER,
+                category_id INTEGER,
+                PRIMARY KEY (project_id, category_id),
+                FOREIGN KEY (project_id) REFERENCES projects (id),
+                FOREIGN KEY (category_id) REFERENCES categories (id)
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        
+        # Standarddaten einfügen
+        self.insert_default_data()
+    
+    def insert_default_data(self):
+        """Fügt Standarddaten ein"""
+        # Standard-Benutzer
+        if not self.get_users():
+            self.add_user("Standard Benutzer", "user@timetracker.local", avatar_color="#2563eb")
+        
+        # Standard-Projekt
+        if not self.get_projects():
+            self.add_project("Allgemein", "Standard-Projekt für allgemeine Aufgaben", "#10b981")
+            self.add_project("Administration", "Administrative Tätigkeiten", "#f59e0b")
+            self.add_project("Entwicklung", "Software-Entwicklung", "#3b82f6")
+        
+        # Standard-Kategorien
+        if not self.get_categories():
+            categories = [
+                ("Büroarbeit", "#64748b", "💼"),
+                ("Entwicklung", "#3b82f6", "💻"),
+                ("Meeting", "#f59e0b", "🤝"),
+                ("Lernen", "#10b981", "📚"),
+                ("Support", "#ef4444", "🛠️")
+            ]
+            for name, color, icon in categories:
+                self.add_category(name, color, icon)
+    
+    def add_user(self, name, email="", role="user", avatar_color="#2563eb"):
+        """Fügt einen neuen Benutzer hinzu"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO users (name, email, role, avatar_color) VALUES (?, ?, ?, ?)", 
+                         (name, email, role, avatar_color))
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return None
+        finally:
+            conn.close()
+    
+    def get_users(self):
+        """Gibt alle aktiven Benutzer zurück"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, email, avatar_color FROM users WHERE active = 1 ORDER BY name")
+        result = cursor.fetchall()
+        conn.close()
+        return result
+    
+    def add_project(self, name, description="", color="#2563eb", client=""):
+        """Fügt ein neues Projekt hinzu"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO projects (name, description, color, client) VALUES (?, ?, ?, ?)", 
+                         (name, description, color, client))
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return None
+        finally:
+            conn.close()
+    
+    def get_projects(self):
+        """Gibt alle aktiven Projekte zurück"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, description, color, client FROM projects WHERE active = 1 ORDER BY name")
+        result = cursor.fetchall()
+        conn.close()
+        return result
+    
+    def add_category(self, name, color="#64748b", icon="📋"):
+        """Fügt eine neue Kategorie hinzu"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO categories (name, color, icon) VALUES (?, ?, ?)", 
+                         (name, color, icon))
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            return None
+        finally:
+            conn.close()
+    
+    def get_categories(self):
+        """Gibt alle aktiven Kategorien zurück"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, color, icon FROM categories WHERE active = 1 ORDER BY name")
+        result = cursor.fetchall()
+        conn.close()
+        return result
+    
+    def add_time_entry(self, start_time, end_time, duration, project_id, description, user_id, tags="", hourly_rate=0, billable=False):
+        """Fügt einen Zeiteintrag hinzu"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO time_entries (start_time, end_time, duration, project_id, description, user_id, tags, hourly_rate, billable)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (start_time, end_time, duration, project_id, description, user_id, tags, hourly_rate, billable))
+        conn.commit()
+        entry_id = cursor.lastrowid
+        conn.close()
+        return entry_id
+    
+    def get_time_entries(self, limit=100, filter_date=None):
+        """Gibt Zeiteinträge mit Projekt- und Benutzernamen zurück"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        query = '''
+            SELECT te.id, te.start_time, te.end_time, te.duration,
+                   p.name as project, te.description, u.name as user,
+                   te.tags, te.hourly_rate, te.billable, p.color, te.status
+            FROM time_entries te
+            LEFT JOIN projects p ON te.project_id = p.id
+            LEFT JOIN users u ON te.user_id = u.id
+        '''
+        
+        params = []
+        if filter_date:
+            query += " WHERE DATE(te.start_time) = ?"
+            params.append(filter_date)
+        
+        query += " ORDER BY te.start_time DESC LIMIT ?"
+        params.append(limit)
+        
+        cursor.execute(query, params)
+        result = cursor.fetchall()
+        conn.close()
+        return result
+    
+    def update_time_entry(self, entry_id, start_time, end_time, duration, project_id, description, user_id, tags="", hourly_rate=0, billable=False):
+        """Aktualisiert einen Zeiteintrag"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE time_entries 
+            SET start_time=?, end_time=?, duration=?, project_id=?, description=?, user_id=?, 
+                tags=?, hourly_rate=?, billable=?, updated_at=CURRENT_TIMESTAMP
+            WHERE id=?
+        ''', (start_time, end_time, duration, project_id, description, user_id, tags, hourly_rate, billable, entry_id))
+        conn.commit()
+        conn.close()
+    
+    def delete_time_entry(self, entry_id):
+        """Löscht einen Zeiteintrag"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM time_entries WHERE id=?", (entry_id,))
+        conn.commit()
+        conn.close()
+    
+    def get_statistics(self):
+        """Gibt erweiterte Statistiken zurück"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Heute
+        today = datetime.date.today()
+        cursor.execute('''
+            SELECT COALESCE(SUM(duration), 0) 
+            FROM time_entries 
+            WHERE DATE(start_time) = ?
+        ''', (today,))
+        today_seconds = cursor.fetchone()[0]
+        
+        # Diese Woche
+        week_start = today - datetime.timedelta(days=today.weekday())
+        cursor.execute('''
+            SELECT COALESCE(SUM(duration), 0) 
+            FROM time_entries 
+            WHERE DATE(start_time) >= ?
+        ''', (week_start,))
+        week_seconds = cursor.fetchone()[0]
+        
+        # Diesen Monat
+        month_start = today.replace(day=1)
+        cursor.execute('''
+            SELECT COALESCE(SUM(duration), 0) 
+            FROM time_entries 
+            WHERE DATE(start_time) >= ?
+        ''', (month_start,))
+        month_seconds = cursor.fetchone()[0]
+        
+        # Gesamtzahl Einträge
+        cursor.execute('SELECT COUNT(*) FROM time_entries')
+        total_entries = cursor.fetchone()[0]
+        
+        # Durchschnittliche tägliche Arbeitszeit (letzte 30 Tage)
+        cursor.execute('''
+            SELECT AVG(daily_duration) FROM (
+                SELECT SUM(duration) as daily_duration
+                FROM time_entries 
+                WHERE DATE(start_time) >= DATE('now', '-30 days')
+                GROUP BY DATE(start_time)
+            )
+        ''')
+        avg_daily = cursor.fetchone()[0] or 0
+        
+        # Aktive Projekte
+        cursor.execute('SELECT COUNT(*) FROM projects WHERE active = 1')
+        active_projects = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'today': today_seconds,
+            'week': week_seconds,
+            'month': month_seconds,
+            'total_entries': total_entries,
+            'avg_daily': avg_daily,
+            'active_projects': active_projects
+        }
+    
+    def get_project_statistics(self, days=30):
+        """Gibt Projekt-spezifische Statistiken zurück"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT p.name, p.color, SUM(te.duration) as total_duration, COUNT(te.id) as entry_count
+            FROM time_entries te
+            JOIN projects p ON te.project_id = p.id
+            WHERE DATE(te.start_time) >= DATE('now', '-{} days')
+            GROUP BY p.id, p.name, p.color
+            ORDER BY total_duration DESC
+        '''.format(days))
+        
+        result = cursor.fetchall()
+        conn.close()
+        return result
+
+
+class ModernTimeTracker:
+    """Hauptklasse der modernen Zeiterfassung"""
+    
+    def __init__(self):
+        # App installieren/konfigurieren
+        AppInstaller.install_app()
+        
+        self.db = TimeTrackerDB()
+        self.setup_window()
+        self.setup_styles()
+        
+        # Timer-Variablen
+        self.timer_running = False
+        self.start_time = None
+        self.elapsed_time = 0
+        self.timer_thread = None
+        self.current_project_id = None
+        self.current_user_id = 1  # Standard-Benutzer
+        
+        # Tray-Icon
+        self.tray_icon = None
+        
+        # UI erstellen
+        self.create_widgets()
+        self.update_statistics()
+        self.update_entries_list()
+        
+        # Event-Handler
+        self.root.protocol("WM_DELETE_WINDOW", self.minimize_to_tray)
+        
+        # Auto-Save Timer
+        self.setup_autosave()
+    
+    def setup_window(self):
+        """Erstellt das Hauptfenster mit modernem Design"""
+        self.root = tk.Tk()
+        self.root.title("TimeTracker Pro v2.0")
+        self.root.geometry("1400x900")
+        self.root.minsize(1200, 700)
+        
+        # Icon setzen (falls vorhanden)
+        self.create_app_icon()
+        
+        # Zentrierung
+        self.center_window()
+        
+        # Moderne Farben
+        self.root.configure(bg=ModernTheme.BG_SECONDARY)
+        
+        # Window State
+        self.window_state = 'normal'
+    
+    def create_app_icon(self):
+        """Erstellt ein App-Icon"""
+        try:
+            # Einfaches Icon erstellen
+            icon_size = (32, 32)
+            icon = Image.new('RGBA', icon_size, ModernTheme.PRIMARY)
+            draw = ImageDraw.Draw(icon)
+            
+            # Einfaches Timer-Symbol
+            draw.ellipse([4, 4, 28, 28], fill='white', outline=ModernTheme.PRIMARY, width=2)
+            draw.line([16, 16, 16, 8], fill=ModernTheme.PRIMARY, width=2)
+            draw.line([16, 16, 22, 16], fill=ModernTheme.PRIMARY, width=2)
+            
+            # Als temporäre Datei speichern
+            icon_path = os.path.join(AppInstaller.get_app_directory(), "app_icon.ico")
+            icon.save(icon_path, format='ICO')
+            self.root.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"Icon-Erstellung fehlgeschlagen: {e}")
+    
+    def center_window(self):
+        """Zentriert das Fenster auf dem Bildschirm"""
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+    
+    def setup_styles(self):
+        """Konfiguriert moderne Styles"""
+        self.style = ttk.Style()
+        
+        # Theme setzen
+        try:
+            self.style.theme_use('clam')
+        except:
+            pass
+        
+        # Moderne Button-Styles
+        self.style.configure(
+            "Primary.TButton",
+            background=ModernTheme.PRIMARY,
+            foreground="white",
+            borderwidth=0,
+            focuscolor="none",
+            padding=(20, 12),
+            font=("Segoe UI", 10, "bold")
+        )
+        
+        self.style.map("Primary.TButton",
+            foreground=[('active', 'white')],
+            background=[('active', ModernTheme.PRIMARY_DARK)])
+        
+        self.style.configure(
+            "Success.TButton",
+            background=ModernTheme.SUCCESS,
+            foreground="white",
+            borderwidth=0,
+            focuscolor="none",
+            padding=(15, 10),
+            font=("Segoe UI", 9, "bold")
+        )
+        
+        self.style.configure(
+            "Danger.TButton",
+            background=ModernTheme.DANGER,
+            foreground="white",
+            borderwidth=0,
+            focuscolor="none",
+            padding=(15, 10),
+            font=("Segoe UI", 9, "bold")
+        )
+        
+        self.style.configure(
+            "Warning.TButton",
+            background=ModernTheme.WARNING,
+            foreground="white",
+            borderwidth=0,
+            focuscolor="none",
+            padding=(12, 8),
+            font=("Segoe UI", 9)
+        )
+        
+        # LabelFrame-Style
+        self.style.configure(
+            "Modern.TLabelframe",
+            background=ModernTheme.BG_PRIMARY,
+            borderwidth=1,
+            relief="solid",
+            bordercolor=ModernTheme.BORDER
+        )
+        
+        self.style.configure(
+            "Modern.TLabelframe.Label",
+            background=ModernTheme.BG_PRIMARY,
+            foreground=ModernTheme.TEXT_PRIMARY,
+            font=("Segoe UI", 12, "bold")
+        )
+        
+        # Card-Style für spezielle Bereiche
+        self.style.configure(
+            "Card.TLabelframe",
+            background=ModernTheme.BG_CARD,
+            borderwidth=1,
+            relief="solid",
+            bordercolor=ModernTheme.BORDER
+        )
+        
+        # Treeview-Style
+        self.style.configure(
+            "Modern.Treeview",
+            background=ModernTheme.BG_PRIMARY,
+            foreground=ModernTheme.TEXT_PRIMARY,
+            borderwidth=0,
+            rowheight=35,
+            font=("Segoe UI", 9)
+        )
+        
+        self.style.configure(
+            "Modern.Treeview.Heading",
+            background=ModernTheme.BG_CARD,
+            foreground=ModernTheme.TEXT_PRIMARY,
+            font=("Segoe UI", 10, "bold"),
+            borderwidth=1,
+            relief="solid"
+        )
+        
+        # Combobox-Style
+        self.style.configure(
+            "Modern.TCombobox",
+            fieldbackground=ModernTheme.BG_PRIMARY,
+            background=ModernTheme.BG_PRIMARY,
+            foreground=ModernTheme.TEXT_PRIMARY,
+            borderwidth=1,
+            insertcolor=ModernTheme.PRIMARY
+        )
+    
+    def create_widgets(self):
+        """Erstellt die modernen UI-Elemente"""
+        # Hauptcontainer mit Padding
+        main_container = tk.Frame(self.root, bg=ModernTheme.BG_SECONDARY)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=25, pady=25)
+        
+        # Header mit Gradient-Effekt
+        self.create_header(main_container)
+        
+        # Hauptinhalt in Grid-Layout
+        content_frame = tk.Frame(main_container, bg=ModernTheme.BG_SECONDARY)
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=(25, 0))
+        
+        # Grid-Layout für bessere Responsivität
+        content_frame.grid_columnconfigure(0, weight=0, minsize=380)  # Linke Spalte
+        content_frame.grid_columnconfigure(1, weight=1, minsize=500)  # Rechte Spalte
+        content_frame.grid_rowconfigure(0, weight=1)
+        
+        # Linke Spalte - Timer und Steuerung
+        left_frame = tk.Frame(content_frame, bg=ModernTheme.BG_SECONDARY)
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
+        
+        self.create_timer_section(left_frame)
+        self.create_statistics_section(left_frame)
+        self.create_quick_actions(left_frame)
+        
+        # Rechte Spalte - Einträge und Details
+        right_frame = tk.Frame(content_frame, bg=ModernTheme.BG_SECONDARY)
+        right_frame.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
+        
+        self.create_entries_section(right_frame)
+        
+        # Status-Bar am unteren Rand
+        self.create_status_bar(main_container)
+    
+    def create_header(self, parent):
+        """Erstellt den Header-Bereich mit Gradient-Effekt"""
+        header_frame = tk.Frame(parent, bg=ModernTheme.PRIMARY, height=100)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        # Header-Inhalt
+        header_content = tk.Frame(header_frame, bg=ModernTheme.PRIMARY)
+        header_content.pack(fill=tk.BOTH, expand=True, padx=30, pady=20)
+        
+        # Linke Seite - Titel und Untertitel
+        left_header = tk.Frame(header_content, bg=ModernTheme.PRIMARY)
+        left_header.pack(side=tk.LEFT, fill=tk.Y)
+        
+        title_label = tk.Label(
+            left_header,
+            text="⏱️ TimeTracker Pro",
+            font=("Segoe UI", 28, "bold"),
+            fg=ModernTheme.TEXT_WHITE,
+            bg=ModernTheme.PRIMARY
+        )
+        title_label.pack(anchor=tk.W)
+        
+        subtitle_label = tk.Label(
+            left_header,
+            text="Professionelle Zeiterfassung v2.0",
+            font=("Segoe UI", 12),
+            fg=ModernTheme.TEXT_WHITE,
+            bg=ModernTheme.PRIMARY
+        )
+        subtitle_label.pack(anchor=tk.W, pady=(5, 0))
+        
+        # Rechte Seite - Status und Aktionen
+        right_header = tk.Frame(header_content, bg=ModernTheme.PRIMARY)
+        right_header.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Aktueller Status
+        self.main_status_label = tk.Label(
+            right_header,
+            text="Bereit zum Starten",
+            font=("Segoe UI", 14, "bold"),
+            fg=ModernTheme.TEXT_WHITE,
+            bg=ModernTheme.PRIMARY
+        )
+        self.main_status_label.pack(anchor=tk.E)
+        
+        # Aktuelle Zeit
+        self.current_time_label = tk.Label(
+            right_header,
+            text="",
+            font=("Segoe UI", 11),
+            fg=ModernTheme.TEXT_WHITE,
+            bg=ModernTheme.PRIMARY
+        )
+        self.current_time_label.pack(anchor=tk.E, pady=(5, 0))
+        
+        # Aktuelle Zeit updaten
+        self.update_current_time()
+    
+    def create_timer_section(self, parent):
+        """Erstellt den Timer-Bereich
