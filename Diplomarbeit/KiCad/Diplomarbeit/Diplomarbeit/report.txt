@@ -1,0 +1,1 @@
+Aktualisiere Symbol BAT1 von "BATTERIE_AGM_Super_Cycle_100Ah:Battery_AGM_100Ah" nach "BATTERIE_AGM_Super_Cycle_100Ah:Battery_AGM_100Ah": OK
