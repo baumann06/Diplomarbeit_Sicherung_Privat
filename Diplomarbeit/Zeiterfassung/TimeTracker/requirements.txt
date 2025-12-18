@@ -1,0 +1,19 @@
+# Zeiterfassung TimeTracker - Abhängigkeiten
+# Für grundlegende Funktionalität (bereits in Python enthalten):
+# - tkinter
+# - sqlite3
+# - json
+# - csv
+# - datetime
+# - threading
+
+# Abhängigkeiten für Logo und Bildverarbeitung:
+Pillow>=9.0.0
+
+# Optionale Abhängigkeiten für erweiterte Features:
+plotly>=5.0.0
+pandas>=1.3.0
+pystray>=0.19.4
+
+# Entwicklung und Testing:
+pytest>=7.0.0
