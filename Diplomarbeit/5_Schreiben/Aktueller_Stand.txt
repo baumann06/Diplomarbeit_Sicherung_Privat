@@ -1,0 +1,16 @@
+4.1 Zielsetzung und Abgrenzung (409 Wörter) 1 Unterkapitel 4.1.1 Anforderungen an das Energiesystem
+	- überarbeitet
+	- explizit erwähnt Hybrid-Lösung Netz + PV
+	- vielleicht dahingehend überarbeiten:
+		- Weitergabe von aktueller Akkustand und Empfehlung was zu deaktivieren
+		  ist. (Intelligente Lastverteilung)
+	- Lastverteilung Steuerung über ESP32 rausgestrichen
+	- Daten werden über Cerbo GX gesendet könnten dann direkt verarbeitet werden in der APP?
+	- Kapitel 4.1.1 ist vielleicht fast etwas zu Allgemein für meinen Part vielleicht in die 	  Allgemeine Einleitung und mit Kapitel 4.1.2 starten? aktuell nicht in mein Kapitel 4.1 	  eingebunden
+	- was ist mit Systemarchitektur-Übersicht Prototyp vs 10m2 System gemeint?
+
+Aktuell bei Kapitel 4.2
+
+Wo fehlen Abbildungen in Kapitel:
+	- 4.1
+
