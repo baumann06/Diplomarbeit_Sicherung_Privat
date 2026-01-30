@@ -3,11 +3,11 @@
 	- Verteiler -> Gewächshaus
 
 2. Spannungen / Wo, Welche?
-	- 12V von Verteiler zu Gewächshaus
+	- 12V 18A von Verteiler zu Gewächshaus im Gewächshaus dann Aufteilen und mit Wandler auf 5V
 
 3. Abstände (Kabellängen)
 	- Verteiler - PV 5m
-	- Verteiler - Gewächshaus 4m
+	- Verteiler - Gewächshaus 5m
 
 4. Rollen für Verteiler 75er oder 100er
 
