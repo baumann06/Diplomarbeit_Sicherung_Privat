@@ -1,0 +1,37 @@
+1. Verbindungen 
+	- Verteiler -> PV
+	- Verteiler -> Gewächshaus
+
+2. Spannungen / Wo, Welche?
+	- 12V 18A von Verteiler zu Gewächshaus im Gewächshaus dann Aufteilen und mit Wandler auf 5V
+
+3. Abstände (Kabellängen)
+	- Verteiler zu PV 5m
+	- Verteiler zu Gewächshaus 5m
+
+4. Rollen für Verteiler 75er oder 100er
+
+5. Schaltschrank / Aufbau?
+
+6. Schaltschrank Beschaffung
+
+7. Schaltschrank Aufbauen
+
+8. Probebetrieb
+
+9. Internet
+	- für Präsentation mit Hotspot
+	- im Betrieb dann WLAN am Standort
+
+Hallo Erich,
+
+im Buchsen-Dokument sind die Links zu den ausgewählten Buchsen. Für die Verbindung zwischen Schrank und Gewächshaus würden wir den M20 2-Pin Connector verwenden. Was die Spannungen angeht: Es sind 12 V 18 A vom Verteiler zum Gewächshaus vorgesehen, und im Gewächshaus wird der 12 V → 5 V DC/DC Wandler eingebaut, um die benötigten 5 V bereitzustellen.
+
+Bei den Abständen bzw. Kabellängen haben wir uns für jeweils 5 m entschieden: einmal vom PV-Panel zum Verteiler und einmal vom Verteiler zum Gewächshaus. Meine bisherigen Überlegungen zum Verteilerschrank sind im PDF „Verteilerschrank“ zu finden.
+
+Für das Internet hatten wir überlegt, für die Präsentation in der HTL einen mobilen Hotspot zu verwenden und für den Betrieb am finalen Standort auf WLAN umzusteigen.
+
+Passen die ausgewählten Produkte im Buchsen-Dokument? Muss ich noch irgendwelche Buchsen für den MC4-Stecker vom PV-Panel besorgen? Und wie sehen jetzt unsere nächsten Schritte aus?
+
+Freundliche Grüße
+Christian
