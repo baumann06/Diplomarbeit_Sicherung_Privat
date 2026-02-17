@@ -1,0 +1,12 @@
+Kapitel 4.4 AGM Batterie verursacht keine Ausgasung:
+Wenn eine Batterie keine Ausgasung verursacht (oder nur in minimalem, vernachlässigbarem Maße), bedeutet dies, dass es sich um eine geschlossene, wartungsfreie Batterie handelt, die im normalen Betrieb keine explosiven Gase (Knallgas) an die Umgebung abgibt. 
+Hier sind die wichtigsten Fakten dazu:
+Technologie: Meistens handelt es sich um VRLA-Batterien (Valve Regulated Lead-Acid), AGM (Absorbent Glass Mat) oder Gel-Batterien.
+Kein Knallgas-Austritt: Im Gegensatz zu herkömmlichen "nassen" Blei-Säure-Batterien, die Wasserstoff und Sauerstoff freisetzen, rekombinieren diese Batterien die Gase intern wieder zu Wasser.
+Sicherheit & Einbau: Da keine Gase austreten, besteht keine unmittelbare Explosionsgefahr in geschlossenen Räumen. Sie sind oft auslaufsicher und können in beliebiger Position (auch liegend) eingebaut werden.
+Wartungsfreiheit: Es muss kein destilliertes Wasser nachgefüllt werden.
+Einsatzorte: Sie sind ideal für Wohnmobile, Boote, USV-Anlagen (unterbrechungsfreie Stromversorgung) oder geschlossene Räume, wo eine Entlüftung nach draußen schwierig ist. 
+Wikipedia
+Wikipedia
+ +5
+Wichtiger Hinweis: Auch "gasdichte" Batterien haben ein Sicherheitsventil. Bei Überladung oder Defekt kann Gas entweichen (sog. "Off-Gassing"), um eine Explosion des Gehäuses zu verhindern. 
